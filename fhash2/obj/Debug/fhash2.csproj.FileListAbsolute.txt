@@ -1,0 +1,7 @@
+C:\Users\Michael Rajchert\source\repos\fhash2\fhash2\obj\Debug\fhash2.csprojAssemblyReference.cache
+C:\Users\Michael Rajchert\source\repos\fhash2\fhash2\obj\Debug\fhash2.csproj.CoreCompileInputs.cache
+C:\Users\Michael Rajchert\source\repos\fhash2\fhash2\bin\Debug\fhash2.exe.config
+C:\Users\Michael Rajchert\source\repos\fhash2\fhash2\bin\Debug\fhash2.exe
+C:\Users\Michael Rajchert\source\repos\fhash2\fhash2\bin\Debug\fhash2.pdb
+C:\Users\Michael Rajchert\source\repos\fhash2\fhash2\obj\Debug\fhash2.exe
+C:\Users\Michael Rajchert\source\repos\fhash2\fhash2\obj\Debug\fhash2.pdb
