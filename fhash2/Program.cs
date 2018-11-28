@@ -8,6 +8,8 @@ namespace fhash2
 {
     class Program
     {
+        //static Dictionary<string, FileHash> hashes = new Dictionary<string, FileHash>();
+        static List<FileHash> hashes = new List<FileHash>();
         static bool programSuccess = true;
         static bool verboseMode = false;
         static void Main(string[] args)
@@ -161,8 +163,30 @@ namespace fhash2
         }
         static void HashOut(string hashValue, string filePath, string hashType = null)
         {
-            if (hashType != null) Console.WriteLine("{0}: {1} @ {2}", hashType == "MD5" ? hashType+" " : hashType, hashValue, filePath);
-            else Console.WriteLine("{1} @ {2}", hashValue, filePath);
+            if (hashType != null)
+            {
+                if (hashes.ContainsKey(filePath))
+                {
+                    
+                }
+                else
+                {
+                    hashes.Add(filePath, new FileHash(hashValue, hashType, filePath));
+                }
+                Console.WriteLine("{0}: {1} @ {2}", hashType == "MD5" ? hashType + " " : hashType, hashValue, filePath);
+            }
+            else //Generally this won't happen, but if it does we can handle it.
+            {
+                if (hashes.ContainsKey(filePath))
+                {
+
+                }
+                else
+                {
+                    hashes.Add(filePath, new FileHash(hashValue, null, filePath));
+                }
+                Console.WriteLine("{1} @ {2}", hashValue, filePath);
+            }
         }
     }
     class HashGen
@@ -206,25 +230,36 @@ namespace fhash2
     }
     class FileHash
     {
-        private static string fp;
-        private static List<string> md5HashHistory = new List<string>();
-        private static List<string> sha1HashHistory = new List<string>();
-        public static void Init(string FilePath, string md5 = null, string sha1 = null)
+        private List<string> hashHistorySHA1 = new List<string>();
+        private List<string> hashHistoryMD5 = new List<string>();
+        private List<string> hashHistoryUNK = new List<string>(); //unknown hash method
+        private string hashType;
+        private string hashFilePath;
+        public FileHash(string hashValue, string hashType = "", string hashFilePath = "")
         {
-            fp = FilePath;
-            if (md5 == null && sha1 == null)
+            if(hashType.ToLower() == "sha1")
             {
-                ProgramReport.Error("FileHash.init", "Cannot initialise a new hash history with no given hashes.");
+                hashHistorySHA1.Add(hashValue);
             }
-            if (md5 != null) { md5HashHistory.Add(md5); }
-            if (sha1 != null) { sha1HashHistory.Add(sha1); }
+            else if(hashType.ToLower() == "md5")
+            {
+                hashHistoryMD5.Add(hashValue);
+            }
+            else
+            {
+                hashHistoryUNK.Add(hashValue);
+            }
+            this.hashType = hashType;
+            this.hashFilePath = hashFilePath;
         }
-        public static void AddMD5(string md5) { md5HashHistory.Add(md5); }
-        public static void AddSHA1(string sha1) { sha1HashHistory.Add(sha1); }
-        public static void SetFilePath(string filePath) { fp = filePath; }
-        public static string GetFilePath() { return fp; }
-        public static List<string> GetMD5HashHistory() { return md5HashHistory; }
-        public static List<string> GetSHA1HashHistory() { return sha1HashHistory; }
+        public string getCurrentValue(string hashType = "") {
+            if (hashType.ToLower() == "md5") return hashHistoryMD5.Last();
+            else if (hashType.ToLower() == "sha1") return hashHistorySHA1.Last();
+            else return hashHistoryUNK.Last();
+        }
+        public string getType() { return hashType; }
+        public string getFilePath() { return hashFilePath; }
+        public void addHashValue(string updatedHash) { }
     }
     class ProgramReport
     {
