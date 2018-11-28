@@ -18,40 +18,91 @@ namespace fhash2
             string[] arg_pause = { "-pause", "/pause", "-p", "/p"};
             string[] arg_quiet = { "-quiet", "/quiet", "-q", "/q" };
             string[] arg_verbose = { "-verbose", "/verbose", "-v", "/v" };
+            string[] arg_csvEnabled = { "-csv", "/csv" }; //TODO
             string[] arg_sortedOut = { "-sort", "/sort", "-s", "/s" }; //TODO
             string[] arg_help = { "-help", "/help", "-h", "/h" }; //TODO
 
 
-            if (args.Intersect(arg_quiet).Any()) ProgramReport.quietMode = true;
-            if (args.Intersect(arg_verbose).Any()) verboseMode = true;
             if (args.Intersect(arg_help).Any())
             {
-                ProgramReport.Notice("Help"); //Get rid of this once Help is written
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.Write("fhash2 for CNT4513 UHA1188\n\n");
+                Console.ResetColor();
+
+                Console.WriteLine("Generates MD5 and/or SHA1 hashes based on a given file/dir path,\n" +
+                    "can save the results to a .csv file");
+
+                Console.WriteLine("\nUSAGE:");
+                Console.Write("    fhash FILE_PATH | DIR_PATH [[-md5] | [-sha1]] [-raw] [-pause] [-quiet]\n" +
+                              "                               [-verbose] [[-csv FILE_PATH] | [-sort]] [-help]\n" +
+                              "\nOPTIONS:\n");
+                Console.WriteLine("    -md5              - Calculate MD5 hash");
+                Console.WriteLine("    -sha1             - Calculate SHA1 hash");
+                Console.WriteLine("    -raw              - Exclusively return Hash Value");
+                Console.WriteLine("    -pause            - Wait for keystroke before exiting");
+                Console.WriteLine("    -quiet            - Display no messages");
+                Console.WriteLine("    -verbose          - Display all messages");
+                Console.WriteLine("    -csv FILE_PATH    - Save hashes to CSV");
+                Console.WriteLine("    -sort             - Return CSV hashes sorted by filepath a-Z");
+                Console.WriteLine("    -help             - Display this message again.");
+
+                Console.WriteLine("\nEXAMPLES:");
+                Console.WriteLine("    > fhash test.txt");
+                Console.WriteLine("    > fhash test.txt -md5");
+                Console.WriteLine("    > fhash test.txt -sha1");
+                Console.WriteLine("    > fhash C:/test -sha1 -md5");
+                Console.WriteLine("    > fhash C:/test -sha1 -md5 -csv C:/output.csv");
+
+                Console.WriteLine("\nARGUMENTS: ");
+                Console.Write("    ");
+                foreach (var arg in arg_genMD5) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_genSHA1) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_rawOut) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_pause) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_quiet) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_verbose) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_csvEnabled) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_sortedOut) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_help) Console.Write(arg.ToString() + " ");
+                Console.Write("\n");
             }
-            
-            try
+            else
             {
-                FileAttributes attr = File.GetAttributes(args[0]);
-                if (attr.HasFlag(FileAttributes.Directory))
+                if (args.Intersect(arg_quiet).Any()) ProgramReport.quietMode = true;
+                if (args.Intersect(arg_verbose).Any()) verboseMode = true;
+
+                try
                 {
-                    ProgramReport.Notice("Given Directory: " + args[0]);
-                    DirectoryInfo dir = new DirectoryInfo(args[0]);
-                    foreach (var file in dir.GetFiles("*.*"))
+                    FileAttributes attr = File.GetAttributes(args[0]);
+                    if (attr.HasFlag(FileAttributes.Directory))
                     {
-                        if (args.Intersect(arg_genMD5).Any()) HashHandler(file.FullName, "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
-                        if (args.Intersect(arg_genSHA1).Any()) HashHandler(file.FullName, "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                        ProgramReport.Notice("Given Directory: " + args[0]);
+                        DirectoryInfo dir = new DirectoryInfo(args[0]);
+                        foreach (var file in dir.GetFiles("*.*"))
+                        {
+                            if (args.Intersect(arg_genMD5).Any()) HashHandler(file.FullName, "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                            if (args.Intersect(arg_genSHA1).Any()) HashHandler(file.FullName, "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                        }
+                    }
+                    else
+                    {
+                        ProgramReport.Notice("Given File: " + args[0]);
+                        if (args.Intersect(arg_genMD5).Any()) HashHandler(args[0], "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                        if (args.Intersect(arg_genSHA1).Any()) HashHandler(args[0], "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
                     }
                 }
-                else
+                catch (Exception e)
                 {
-                    ProgramReport.Notice("Given File: " + args[0]);
-                    if (args.Intersect(arg_genMD5).Any()) HashHandler(args[0], "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
-                    if (args.Intersect(arg_genSHA1).Any()) HashHandler(args[0], "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                    ProgramReport.Error("Program.Main", "Could not get a file in the given file path", e);
                 }
-            }
-            catch (Exception e)
-            {
-                ProgramReport.Error("Program.Main", "Could not get a file in the given file path", e);
             }
             
             if (!programSuccess)
