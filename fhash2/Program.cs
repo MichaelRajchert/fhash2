@@ -28,23 +28,30 @@ namespace fhash2
             {
                 ProgramReport.Notice("Help"); //Get rid of this once Help is written
             }
-
-            FileAttributes attr = File.GetAttributes(args[0]);
-            if (attr.HasFlag(FileAttributes.Directory))
+            
+            try
             {
-                ProgramReport.Notice("Given Directory: " + args[0]);
-                DirectoryInfo dir = new DirectoryInfo(args[0]);
-                foreach (var file in dir.GetFiles("*.*"))
+                FileAttributes attr = File.GetAttributes(args[0]);
+                if (attr.HasFlag(FileAttributes.Directory))
                 {
-                    if (args.Intersect(arg_genMD5).Any()) HashHandler(file.FullName, "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
-                    if (args.Intersect(arg_genSHA1).Any()) HashHandler(file.FullName, "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                    ProgramReport.Notice("Given Directory: " + args[0]);
+                    DirectoryInfo dir = new DirectoryInfo(args[0]);
+                    foreach (var file in dir.GetFiles("*.*"))
+                    {
+                        if (args.Intersect(arg_genMD5).Any()) HashHandler(file.FullName, "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                        if (args.Intersect(arg_genSHA1).Any()) HashHandler(file.FullName, "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                    }
+                }
+                else
+                {
+                    ProgramReport.Notice("Given File: " + args[0]);
+                    if (args.Intersect(arg_genMD5).Any()) HashHandler(args[0], "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                    if (args.Intersect(arg_genSHA1).Any()) HashHandler(args[0], "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
                 }
             }
-            else
+            catch (Exception e)
             {
-                ProgramReport.Notice("Given File: " + args[0]);
-                if (args.Intersect(arg_genMD5).Any()) HashHandler(args[0], "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
-                if (args.Intersect(arg_genSHA1).Any()) HashHandler(args[0], "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                ProgramReport.Error("Program.Main", "Could not get a file in the given file path", e);
             }
             
             if (!programSuccess)
