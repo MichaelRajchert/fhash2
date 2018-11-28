@@ -8,6 +8,8 @@ namespace fhash2
 {
     class Program
     {
+        //static Dictionary<string, FileHash> hashes = new Dictionary<string, FileHash>();
+        static List<FileHash> hashes = new List<FileHash>();
         static bool programSuccess = true;
         static bool verboseMode = false;
         static void Main(string[] args)
@@ -18,40 +20,91 @@ namespace fhash2
             string[] arg_pause = { "-pause", "/pause", "-p", "/p"};
             string[] arg_quiet = { "-quiet", "/quiet", "-q", "/q" };
             string[] arg_verbose = { "-verbose", "/verbose", "-v", "/v" };
+            string[] arg_csvEnabled = { "-csv", "/csv" }; //TODO
             string[] arg_sortedOut = { "-sort", "/sort", "-s", "/s" }; //TODO
             string[] arg_help = { "-help", "/help", "-h", "/h" }; //TODO
 
 
-            if (args.Intersect(arg_quiet).Any()) ProgramReport.quietMode = true;
-            if (args.Intersect(arg_verbose).Any()) verboseMode = true;
             if (args.Intersect(arg_help).Any())
             {
-                ProgramReport.Notice("Help"); //Get rid of this once Help is written
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.Write("fhash2 for CNT4513 UHA1188\n\n");
+                Console.ResetColor();
+
+                Console.WriteLine("Generates MD5 and/or SHA1 hashes based on a given file/dir path,\n" +
+                    "can save the results to a .csv file");
+
+                Console.WriteLine("\nUSAGE:");
+                Console.Write("    fhash FILE_PATH | DIR_PATH [[-md5] | [-sha1]] [-raw] [-pause] [-quiet]\n" +
+                              "                               [-verbose] [[-csv FILE_PATH] | [-sort]] [-help]\n" +
+                              "\nOPTIONS:\n");
+                Console.WriteLine("    -md5              - Calculate MD5 hash");
+                Console.WriteLine("    -sha1             - Calculate SHA1 hash");
+                Console.WriteLine("    -raw              - Exclusively return Hash Value");
+                Console.WriteLine("    -pause            - Wait for keystroke before exiting");
+                Console.WriteLine("    -quiet            - Display no messages");
+                Console.WriteLine("    -verbose          - Display all messages");
+                Console.WriteLine("    -csv FILE_PATH    - Save hashes to CSV");
+                Console.WriteLine("    -sort             - Return CSV hashes sorted by filepath a-Z");
+                Console.WriteLine("    -help             - Display this message again.");
+
+                Console.WriteLine("\nEXAMPLES:");
+                Console.WriteLine("    > fhash test.txt");
+                Console.WriteLine("    > fhash test.txt -md5");
+                Console.WriteLine("    > fhash test.txt -sha1");
+                Console.WriteLine("    > fhash C:/test -sha1 -md5");
+                Console.WriteLine("    > fhash C:/test -sha1 -md5 -csv C:/output.csv");
+
+                Console.WriteLine("\nARGUMENTS: ");
+                Console.Write("    ");
+                foreach (var arg in arg_genMD5) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_genSHA1) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_rawOut) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_pause) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_quiet) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_verbose) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_csvEnabled) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_sortedOut) Console.Write(arg.ToString() + " ");
+                Console.Write("\n    ");
+                foreach (var arg in arg_help) Console.Write(arg.ToString() + " ");
+                Console.Write("\n");
             }
-            
-            try
+            else
             {
-                FileAttributes attr = File.GetAttributes(args[0]);
-                if (attr.HasFlag(FileAttributes.Directory))
+                if (args.Intersect(arg_quiet).Any()) ProgramReport.quietMode = true;
+                if (args.Intersect(arg_verbose).Any()) verboseMode = true;
+
+                try
                 {
-                    ProgramReport.Notice("Given Directory: " + args[0]);
-                    DirectoryInfo dir = new DirectoryInfo(args[0]);
-                    foreach (var file in dir.GetFiles("*.*"))
+                    FileAttributes attr = File.GetAttributes(args[0]);
+                    if (attr.HasFlag(FileAttributes.Directory))
                     {
-                        if (args.Intersect(arg_genMD5).Any()) HashHandler(file.FullName, "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
-                        if (args.Intersect(arg_genSHA1).Any()) HashHandler(file.FullName, "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                        ProgramReport.Notice("Given Directory: " + args[0]);
+                        DirectoryInfo dir = new DirectoryInfo(args[0]);
+                        foreach (var file in dir.GetFiles("*.*"))
+                        {
+                            if (args.Intersect(arg_genMD5).Any()) HashHandler(file.FullName, "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                            if (args.Intersect(arg_genSHA1).Any()) HashHandler(file.FullName, "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                        }
+                    }
+                    else
+                    {
+                        ProgramReport.Notice("Given File: " + args[0]);
+                        if (args.Intersect(arg_genMD5).Any()) HashHandler(args[0], "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                        if (args.Intersect(arg_genSHA1).Any()) HashHandler(args[0], "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
                     }
                 }
-                else
+                catch (Exception e)
                 {
-                    ProgramReport.Notice("Given File: " + args[0]);
-                    if (args.Intersect(arg_genMD5).Any()) HashHandler(args[0], "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
-                    if (args.Intersect(arg_genSHA1).Any()) HashHandler(args[0], "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                    ProgramReport.Error("Program.Main", "Could not get a file in the given file path", e);
                 }
-            }
-            catch (Exception e)
-            {
-                ProgramReport.Error("Program.Main", "Could not get a file in the given file path", e);
             }
             
             if (!programSuccess)
@@ -110,8 +163,30 @@ namespace fhash2
         }
         static void HashOut(string hashValue, string filePath, string hashType = null)
         {
-            if (hashType != null) Console.WriteLine("{0}: {1} @ {2}", hashType == "MD5" ? hashType+" " : hashType, hashValue, filePath);
-            else Console.WriteLine("{1} @ {2}", hashValue, filePath);
+            if (hashType != null)
+            {
+                if (hashes.ContainsKey(filePath))
+                {
+                    
+                }
+                else
+                {
+                    hashes.Add(filePath, new FileHash(hashValue, hashType, filePath));
+                }
+                Console.WriteLine("{0}: {1} @ {2}", hashType == "MD5" ? hashType + " " : hashType, hashValue, filePath);
+            }
+            else //Generally this won't happen, but if it does we can handle it.
+            {
+                if (hashes.ContainsKey(filePath))
+                {
+
+                }
+                else
+                {
+                    hashes.Add(filePath, new FileHash(hashValue, null, filePath));
+                }
+                Console.WriteLine("{1} @ {2}", hashValue, filePath);
+            }
         }
     }
     class HashGen
@@ -155,25 +230,36 @@ namespace fhash2
     }
     class FileHash
     {
-        private static string fp;
-        private static List<string> md5HashHistory = new List<string>();
-        private static List<string> sha1HashHistory = new List<string>();
-        public static void Init(string FilePath, string md5 = null, string sha1 = null)
+        private List<string> hashHistorySHA1 = new List<string>();
+        private List<string> hashHistoryMD5 = new List<string>();
+        private List<string> hashHistoryUNK = new List<string>(); //unknown hash method
+        private string hashType;
+        private string hashFilePath;
+        public FileHash(string hashValue, string hashType = "", string hashFilePath = "")
         {
-            fp = FilePath;
-            if (md5 == null && sha1 == null)
+            if(hashType.ToLower() == "sha1")
             {
-                ProgramReport.Error("FileHash.init", "Cannot initialise a new hash history with no given hashes.");
+                hashHistorySHA1.Add(hashValue);
             }
-            if (md5 != null) { md5HashHistory.Add(md5); }
-            if (sha1 != null) { sha1HashHistory.Add(sha1); }
+            else if(hashType.ToLower() == "md5")
+            {
+                hashHistoryMD5.Add(hashValue);
+            }
+            else
+            {
+                hashHistoryUNK.Add(hashValue);
+            }
+            this.hashType = hashType;
+            this.hashFilePath = hashFilePath;
         }
-        public static void AddMD5(string md5) { md5HashHistory.Add(md5); }
-        public static void AddSHA1(string sha1) { sha1HashHistory.Add(sha1); }
-        public static void SetFilePath(string filePath) { fp = filePath; }
-        public static string GetFilePath() { return fp; }
-        public static List<string> GetMD5HashHistory() { return md5HashHistory; }
-        public static List<string> GetSHA1HashHistory() { return sha1HashHistory; }
+        public string getCurrentValue(string hashType = "") {
+            if (hashType.ToLower() == "md5") return hashHistoryMD5.Last();
+            else if (hashType.ToLower() == "sha1") return hashHistorySHA1.Last();
+            else return hashHistoryUNK.Last();
+        }
+        public string getType() { return hashType; }
+        public string getFilePath() { return hashFilePath; }
+        public void addHashValue(string updatedHash) { }
     }
     class ProgramReport
     {
