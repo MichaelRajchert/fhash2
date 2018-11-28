@@ -8,8 +8,8 @@ namespace fhash2
 {
     class Program
     {
-        //static Dictionary<string, FileHash> hashes = new Dictionary<string, FileHash>();
-        static List<FileHash> hashes = new List<FileHash>();
+        static Dictionary<string, FileHash> hashes = new Dictionary<string, FileHash>();
+        //static List<FileHash> hashes = new List<FileHash>();
         static bool programSuccess = true;
         static bool verboseMode = false;
         static void Main(string[] args)
