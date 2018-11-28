@@ -1,82 +1,110 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.IO;
-using System.Xml.Linq;
-using System.Xml;
 
 namespace fhash2
 {
     class Program
     {
+        static bool programSuccess = true;
+        static bool verboseMode = false;
         static void Main(string[] args)
         {
             string[] arg_genMD5 = { "-md5", "/md5" };
             string[] arg_genSHA1 = { "-sha1", "/sha1" };
-            string[] arg_rawOut = { "-raw", "/raw" };
-            string[] arg_pause = { "-pause", "/pause" };
-            string[] arg_help = { "-help", "/help", "-h", "/h" };
+            string[] arg_rawOut = { "-raw", "/raw", "-r", "/r" };
+            string[] arg_pause = { "-pause", "/pause", "-p", "/p"};
+            string[] arg_quiet = { "-quiet", "/quiet", "-q", "/q" };
+            string[] arg_verbose = { "-verbose", "/verbose", "-v", "/v" };
+            string[] arg_sortedOut = { "-sort", "/sort", "-s", "/s" }; //TODO
+            string[] arg_help = { "-help", "/help", "-h", "/h" }; //TODO
 
-            Dictionary<string, FileHash> hashes = new Dictionary<string, FileHash>();
 
-            bool programSuccess = true;
-            
+            if (args.Intersect(arg_quiet).Any()) ProgramReport.quietMode = true;
+            if (args.Intersect(arg_verbose).Any()) verboseMode = true;
             if (args.Intersect(arg_help).Any())
             {
                 ProgramReport.Notice("Help"); //Get rid of this once Help is written
             }
-            if (args.Intersect(arg_genMD5).Any())
+
+            FileAttributes attr = File.GetAttributes(args[0]);
+            if (attr.HasFlag(FileAttributes.Directory))
             {
-                if (args.Intersect(arg_rawOut).Any())
+                ProgramReport.Notice("Given Directory: " + args[0]);
+                DirectoryInfo dir = new DirectoryInfo(args[0]);
+                foreach (var file in dir.GetFiles("*.*"))
                 {
-                    Console.WriteLine(HashGen.GenMD5(args[0]));
-                }
-                else
-                {
-                    ProgramReport.Notice("Generating MD5");
-                    string result = HashGen.GenMD5(args[0]);
-                    if(result == null)
-                    {
-                        programSuccess = false;
-                    }
-                    else
-                    {
-                        Console.WriteLine(result); //have this write to spreadsheet instead
-                    }
+                    if (args.Intersect(arg_genMD5).Any()) HashHandler(file.FullName, "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                    if (args.Intersect(arg_genSHA1).Any()) HashHandler(file.FullName, "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
                 }
             }
-            if (args.Intersect(arg_genSHA1).Any())
+            else
             {
-                if (args.Intersect(arg_rawOut).Any())
-                {
-                    Console.WriteLine(HashGen.GenSHA1(args[0]));
-                }
-                else
-                {
-                    ProgramReport.Notice("Generating SHA1");
-                    string result = HashGen.GenSHA1(args[0]);
-                    if(result == null)
-                    {
-                        programSuccess = false;
-                    }
-                    else
-                    {
-                        Console.WriteLine(result); //have this write to a spreadsheet instaed.
-                    }
-                }
+                ProgramReport.Notice("Given File: " + args[0]);
+                if (args.Intersect(arg_genMD5).Any()) HashHandler(args[0], "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                if (args.Intersect(arg_genSHA1).Any()) HashHandler(args[0], "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
             }
+            
             if (!programSuccess)
             {
-                ProgramReport.Warning("", "Program exited with no success, review the critical errors and try again.");
+                ProgramReport.Warning("", "Program exited with errors, review the critical errors and try again.");
             }
             //END
             if (args.Intersect(arg_pause).Any())
             {
                 Console.ReadKey();
             }
+        }
+        static void HashHandler(string filePath, string hashType = "MD5", bool raw = false, bool verbose = false)
+        {
+            if(hashType == "MD5")
+            {
+                if (raw)
+                {
+                    Console.WriteLine(HashGen.GenMD5(filePath));
+                }
+                else
+                {
+                    if(verbose) ProgramReport.Notice("Generating MD5");
+                    string result = HashGen.GenMD5(filePath);
+                    if (result == null)
+                    {
+                        programSuccess = false;
+                    }
+                    else
+                    {
+                        HashOut(result, filePath, "MD5");
+                    }
+                }
+            }
+            else if (hashType == "SHA1")
+            {
+                if (raw)
+                {
+                    Console.WriteLine(HashGen.GenSHA1(filePath));
+                }
+                else
+                {
+                    if(verbose) ProgramReport.Notice("Generating SHA1");
+                    string result = HashGen.GenSHA1(filePath);
+                    if (result == null)
+                    {
+                        programSuccess = false;
+                    }
+                    else
+                    {
+                        HashOut(result, filePath, "SHA1");
+                    }
+                }
+            }
+
+        }
+        static void HashOut(string hashValue, string filePath, string hashType = null)
+        {
+            if (hashType != null) Console.WriteLine("{0}: {1} @ {2}", hashType == "MD5" ? hashType+" " : hashType, hashValue, filePath);
+            else Console.WriteLine("{1} @ {2}", hashValue, filePath);
         }
     }
     class HashGen
@@ -142,43 +170,53 @@ namespace fhash2
     }
     class ProgramReport
     {
+        public static bool quietMode = false;
         public static void Error(string location, string message, Exception exception = null)
         {
-            Console.Write("[");
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.Write("X");
-            Console.ResetColor();
-            if(exception == null)
+            if (!quietMode)
             {
-                Console.WriteLine("]: {0}, {1}", location, message);
-            }
-            else
-            {
-                Console.WriteLine("]: {0} @ {1}, {2}", exception.Message, location, message);
+                Console.Write("[");
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Write("X");
+                Console.ResetColor();
+                if (exception == null)
+                {
+                    Console.WriteLine("]: {0}, {1}", location, message);
+                }
+                else
+                {
+                    Console.WriteLine("]: {0} @ {1}, {2}", exception.Message, location, message);
+                }
             }
         }
         public static void Warning(string location, string message)
         {
-            Console.Write("[");
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.Write("!");
-            Console.ResetColor();
-            if(location == "")
+            if (!quietMode)
             {
-                Console.WriteLine("]: {0}", message);
-            }
-            else
-            {
-                Console.WriteLine("]: {0} @ {1}", message, location);
+                Console.Write("[");
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Write("!");
+                Console.ResetColor();
+                if (location == "")
+                {
+                    Console.WriteLine("]: {0}", message);
+                }
+                else
+                {
+                    Console.WriteLine("]: {0} @ {1}", message, location);
+                }
             }
         }
         public static void Notice(string message)
         {
-            Console.Write("[");
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.Write("~");
-            Console.ResetColor();
-            Console.WriteLine("]: {0}", message);
+            if (!quietMode)
+            {
+                Console.Write("[");
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.Write("~");
+                Console.ResetColor();
+                Console.WriteLine("]: {0}", message);
+            }
         }
     }
 }
