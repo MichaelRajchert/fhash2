@@ -8,8 +8,11 @@ namespace fhash2
 {
     class Program
     {
-        static Dictionary<string, FileHash> hashes = new Dictionary<string, FileHash>();
-        //static List<FileHash> hashes = new List<FileHash>();
+        //static Dictionary<string, FileHash> hashes = new Dictionary<string, FileHash>();
+
+        static List<FileHash> hashes = new List<FileHash>(); //each hash gets an ID
+        static List<string> filePathList = new List<string>();
+
         static bool programSuccess = true;
         static bool verboseMode = false;
         static void Main(string[] args)
@@ -165,25 +168,43 @@ namespace fhash2
         {
             if (hashType != null)
             {
-                if (hashes.ContainsKey(filePath))
+                if (filePathList.Contains(filePath))
                 {
-                    
+                    if(verboseMode) ProgramReport.Notice("Existing file entry found, adding updated info.");
+                    foreach (FileHash hashObj in hashes)
+                    {
+                        if(hashObj.getFilePath() == filePath)
+                        {
+                            hashObj.addHashValue(hashValue, hashType);
+                        }
+                    }
                 }
                 else
                 {
-                    hashes.Add(filePath, new FileHash(hashValue, hashType, filePath));
+                    ProgramReport.Notice("New file entry found at "+filePath);
+                    filePathList.Add(filePath);
+                    hashes.Add(new FileHash(hashValue, hashType, filePath));
                 }
                 Console.WriteLine("{0}: {1} @ {2}", hashType == "MD5" ? hashType + " " : hashType, hashValue, filePath);
             }
             else //Generally this won't happen, but if it does we can handle it.
             {
-                if (hashes.ContainsKey(filePath))
+                if (filePathList.Contains(filePath))
                 {
-
+                    ProgramReport.Notice("Existing file entry found, adding updated info.");
+                    foreach (FileHash hashObj in hashes)
+                    {
+                        if(hashObj.getFilePath() == filePath)
+                        {
+                            hashObj.addHashValue(hashValue, hashType);
+                        }
+                    }
                 }
                 else
                 {
-                    hashes.Add(filePath, new FileHash(hashValue, null, filePath));
+                    ProgramReport.Notice("New file entry found at " + filePath);
+                    filePathList.Add(filePath);
+                    hashes.Add(new FileHash(hashValue, hashType, filePath));
                 }
                 Console.WriteLine("{1} @ {2}", hashValue, filePath);
             }
@@ -233,8 +254,8 @@ namespace fhash2
         private List<string> hashHistorySHA1 = new List<string>();
         private List<string> hashHistoryMD5 = new List<string>();
         private List<string> hashHistoryUNK = new List<string>(); //unknown hash method
-        private string hashType;
-        private string hashFilePath;
+        private string hashType { get; set; }
+        private string hashFilePath { get; set; }
         public FileHash(string hashValue, string hashType = "", string hashFilePath = "")
         {
             if(hashType.ToLower() == "sha1")
@@ -259,7 +280,12 @@ namespace fhash2
         }
         public string getType() { return hashType; }
         public string getFilePath() { return hashFilePath; }
-        public void addHashValue(string updatedHash) { }
+        public void addHashValue(string updatedHash, string hashType = "")
+        {
+            if (hashType.ToLower() == "sha1") hashHistorySHA1.Add(updatedHash);
+            else if (hashType.ToLower() == "md5") hashHistoryMD5.Add(updatedHash);
+            else hashHistoryUNK.Add(updatedHash);
+        }
     }
     class ProgramReport
     {
