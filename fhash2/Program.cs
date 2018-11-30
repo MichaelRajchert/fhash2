@@ -8,10 +8,15 @@ namespace fhash2
 {
     class Program
     {
-        //static Dictionary<string, FileHash> hashes = new Dictionary<string, FileHash>();
-
-        static List<FileHash> hashes = new List<FileHash>();
-        static List<string> filePathList = new List<string>(); //these are all the files we got
+        /* TODO LIST
+             Add Date&Time collected for file hash
+             Add CSV functionality
+             Look into sorting the final CSV file by filePath
+             Make the hashes list more efficient
+        */
+        //static List<FileHash> hashes = new List<FileHash>();
+        //static List<string> filePathList = new List<string>(); //these are all the files we got
+        static Dictionary<string, FileHash> hashes = new Dictionary<string, FileHash>();
 
         static string csvCaseFilePath;
         static bool programSuccess = true;
@@ -29,7 +34,7 @@ namespace fhash2
             string[] arg_sortedOut = { "-sort", "/sort", "-s", "/s" }; //TODO - Probably can't do this with the current setup
             string[] arg_help = { "-help", "/help", "-h", "/h" };
 
-
+            
             if (args.Intersect(arg_help).Any())
             {
                 Console.ForegroundColor = ConsoleColor.Cyan;
@@ -86,14 +91,10 @@ namespace fhash2
                 if (args.Intersect(arg_quiet).Any()) ProgramReport.quietMode = true;
                 if (args.Intersect(arg_rawOut).Any()) ProgramReport.quietMode = true;
                 if (args.Intersect(arg_verbose).Any()) verboseMode = true;
+                if (args.Intersect(arg_csvEnabled).Any()) noHashOutput = true;
 
-                if (args.Intersect(arg_csvEnabled).Any())
-                {
-                    noHashOutput = true;
-                    int csvArgIndex = IndexOfArrayUsingArray(args, arg_csvEnabled);
-                    csvCaseFilePath = args[csvArgIndex + 1];
-                    ProgramReport.Notice("Given CSV case Location: "+args[csvArgIndex+1]);
-                }
+                if (args.Intersect(arg_genMD5).Any()) ProgramReport.Notice("Generating SHA1 Hashes.");
+                if (args.Intersect(arg_genSHA1).Any()) ProgramReport.Notice("Generating MD5 Hashes.");
 
                 try
                 {
@@ -102,10 +103,10 @@ namespace fhash2
                     {
                         ProgramReport.Notice("Given Directory: " + args[0]);
                         DirectoryInfo dir = new DirectoryInfo(args[0]);
-                        foreach (var file in dir.GetFiles("*.*"))
+                        foreach (FileInfo fileInfo in dir.GetFiles("*.*"))
                         {
-                            if (args.Intersect(arg_genMD5).Any()) HashHandler(file.FullName, "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
-                            if (args.Intersect(arg_genSHA1).Any()) HashHandler(file.FullName, "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                            if (args.Intersect(arg_genMD5).Any()) HashHandler(fileInfo.FullName, "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                            if (args.Intersect(arg_genSHA1).Any()) HashHandler(fileInfo.FullName, "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
                         }
                     }
                     else
@@ -121,12 +122,22 @@ namespace fhash2
                     programSuccess = false;
                 }
             }
-            
+            if (args.Intersect(arg_csvEnabled).Any())
+            {
+                int csvArgIndex = IndexOfArrayUsingArray(args, arg_csvEnabled);
+                csvCaseFilePath = args[csvArgIndex + 1];
+                ProgramReport.Notice("Given CSV case Location: " + args[csvArgIndex + 1]);
+                CSVWriter(hashes, args[csvArgIndex + 1]);
+            }
+
             if (!programSuccess)
             {
                 ProgramReport.Warning("", "Program exited with errors, review the critical errors and try again.");
             }
             //END
+
+            ProgramReport.Notice("Done.");
+            
             if (args.Intersect(arg_pause).Any())
             {
                 Console.ReadKey();
@@ -176,50 +187,55 @@ namespace fhash2
             }
 
         }
-        static void HashOut(string hashValue, string filePath, string hashType = null)
+        static void HashOut(string hashValue, string filePath, string hashType = "UNK")
         {
             if (hashType != null)
             {
-                if (filePathList.Contains(filePath))
+                if (hashes.ContainsKey(filePath))
                 {
                     if(verboseMode) ProgramReport.Notice("Existing file entry found, adding updated info.");
-                    foreach (FileHash hashObj in hashes)
-                    {
-                        if(hashObj.GetFilePath() == filePath)
-                        {
-                            hashObj.AddHashValue(hashValue, hashType);
-                        }
-                    }
+                    
+                    hashes[filePath].AddHashValue(hashValue, hashType);
                 }
                 else
                 {
-                    ProgramReport.Notice("New file entry found at "+filePath);
-                    filePathList.Add(filePath);
-                    hashes.Add(new FileHash(hashValue, hashType, filePath));
+                    if(verboseMode) ProgramReport.Notice("New file entry found at "+filePath);
+                    hashes.Add(filePath, new FileHash(hashValue, hashType, filePath));
                 }
-                if(!noHashOutput) Console.WriteLine("    {0}: {1} @ {2}", hashType == "MD5" ? hashType + " " : hashType, hashValue, filePath);
+                if(!noHashOutput) Console.WriteLine("    {0}: {1} @ {2}", hashType == "MD5" ? hashType + " " : hashType, hashValue, filePath); //Would like to get rid of this in the future
             }
-            else //Generally this won't happen, but if it does we can handle it.
+        }
+        static void CSVWriter(Dictionary<string, FileHash> fileHashes, string csvFilePath)
+        {
+            try
             {
-                if (filePathList.Contains(filePath))
+                using (System.IO.StreamWriter csvCasefile = new System.IO.StreamWriter(csvFilePath))
                 {
-                    ProgramReport.Notice("Existing file entry found, adding updated info.");
-                    foreach (FileHash hashObj in hashes)
+                    csvCasefile.WriteLine("Date Collected, File Path, MD5 Hash Current, MD5 Hash Old, SHA1 Hash Current, SHA1 Hash Old, Unknown Hashes");
+                    foreach(KeyValuePair<string, FileHash> hashPair in fileHashes.ToList())
                     {
-                        if(hashObj.GetFilePath() == filePath)
-                        {
-                            hashObj.AddHashValue(hashValue, hashType);
-                        }
+                        FileHash hashObj = hashPair.Value;
+                        string dateCollected = "TODO";
+                        string filePath = hashPair.Key;
+                        string shaVal = hashObj.GetCurrentValue("SHA1");
+                        string md5Val = hashObj.GetCurrentValue("MD5");
+                        csvCasefile.WriteLine(
+                            "{0},{1},{2},{3},{4},{5}",
+                            dateCollected,
+                            filePath,
+                            md5Val,
+                            dateCollected,
+                            shaVal,
+                            dateCollected
+                        );
                     }
                 }
-                else
-                {
-                    ProgramReport.Notice("New file entry found at " + filePath);
-                    filePathList.Add(filePath);
-                    hashes.Add(new FileHash(hashValue, hashType, filePath));
-                }
-                if (!noHashOutput) Console.WriteLine("    {1} @ {2}", hashValue, filePath);
             }
+            catch(Exception e)
+            {
+                ProgramReport.Error("Program.CSVWriter", "Could not open CSV Case File", e);
+            }
+            
         }
         static int IndexOfArrayUsingArray(string[] find, string[] dictionary)
         {
