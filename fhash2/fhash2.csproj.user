@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
-    <StartArguments>"B:\Users\Michael Rajchert\Desktop\pingTests" -md5 -sha1 -q -p</StartArguments>
+    <StartArguments>"C:\Windows\System32" -csv "B:\Users\Michael Rajchert\Desktop\fhash_case.csv" -md5 -sha1</StartArguments>
   </PropertyGroup>
   <PropertyGroup>
     <ProjectView>ProjectFiles</ProjectView>

@@ -8,13 +8,20 @@ namespace fhash2
 {
     class Program
     {
-        //static Dictionary<string, FileHash> hashes = new Dictionary<string, FileHash>();
+        /* TODO LIST
+             Add Date&Time collected for file hash
+             Add CSV functionality
+             Look into sorting the final CSV file by filePath
+             Make the hashes list more efficient
+        */
+        //static List<FileHash> hashes = new List<FileHash>();
+        //static List<string> filePathList = new List<string>(); //these are all the files we got
+        static Dictionary<string, FileHash> hashes = new Dictionary<string, FileHash>();
 
-        static List<FileHash> hashes = new List<FileHash>(); //each hash gets an ID
-        static List<string> filePathList = new List<string>();
-
+        static string csvCaseFilePath;
         static bool programSuccess = true;
         static bool verboseMode = false;
+        static bool noHashOutput = false;
         static void Main(string[] args)
         {
             string[] arg_genMD5 = { "-md5", "/md5" };
@@ -24,10 +31,10 @@ namespace fhash2
             string[] arg_quiet = { "-quiet", "/quiet", "-q", "/q" };
             string[] arg_verbose = { "-verbose", "/verbose", "-v", "/v" };
             string[] arg_csvEnabled = { "-csv", "/csv" }; //TODO
-            string[] arg_sortedOut = { "-sort", "/sort", "-s", "/s" }; //TODO
-            string[] arg_help = { "-help", "/help", "-h", "/h" }; //TODO
+            string[] arg_sortedOut = { "-sort", "/sort", "-s", "/s" }; //TODO - Probably can't do this with the current setup
+            string[] arg_help = { "-help", "/help", "-h", "/h" };
 
-
+            
             if (args.Intersect(arg_help).Any())
             {
                 Console.ForegroundColor = ConsoleColor.Cyan;
@@ -82,7 +89,12 @@ namespace fhash2
             else
             {
                 if (args.Intersect(arg_quiet).Any()) ProgramReport.quietMode = true;
+                if (args.Intersect(arg_rawOut).Any()) ProgramReport.quietMode = true;
                 if (args.Intersect(arg_verbose).Any()) verboseMode = true;
+                if (args.Intersect(arg_csvEnabled).Any()) noHashOutput = true;
+
+                if (args.Intersect(arg_genMD5).Any()) ProgramReport.Notice("Generating SHA1 Hashes.");
+                if (args.Intersect(arg_genSHA1).Any()) ProgramReport.Notice("Generating MD5 Hashes.");
 
                 try
                 {
@@ -91,10 +103,10 @@ namespace fhash2
                     {
                         ProgramReport.Notice("Given Directory: " + args[0]);
                         DirectoryInfo dir = new DirectoryInfo(args[0]);
-                        foreach (var file in dir.GetFiles("*.*"))
+                        foreach (FileInfo fileInfo in dir.GetFiles("*.*"))
                         {
-                            if (args.Intersect(arg_genMD5).Any()) HashHandler(file.FullName, "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
-                            if (args.Intersect(arg_genSHA1).Any()) HashHandler(file.FullName, "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                            if (args.Intersect(arg_genMD5).Any()) HashHandler(fileInfo.FullName, "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                            if (args.Intersect(arg_genSHA1).Any()) HashHandler(fileInfo.FullName, "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
                         }
                     }
                     else
@@ -107,14 +119,25 @@ namespace fhash2
                 catch (Exception e)
                 {
                     ProgramReport.Error("Program.Main", "Could not get a file in the given file path", e);
+                    programSuccess = false;
                 }
             }
-            
+            if (args.Intersect(arg_csvEnabled).Any())
+            {
+                int csvArgIndex = IndexOfArrayUsingArray(args, arg_csvEnabled);
+                csvCaseFilePath = args[csvArgIndex + 1];
+                ProgramReport.Notice("Given CSV case Location: " + args[csvArgIndex + 1]);
+                CSVWriter(hashes, args[csvArgIndex + 1]);
+            }
+
             if (!programSuccess)
             {
                 ProgramReport.Warning("", "Program exited with errors, review the critical errors and try again.");
             }
             //END
+
+            ProgramReport.Notice("Done.");
+            
             if (args.Intersect(arg_pause).Any())
             {
                 Console.ReadKey();
@@ -164,50 +187,60 @@ namespace fhash2
             }
 
         }
-        static void HashOut(string hashValue, string filePath, string hashType = null)
+        static void HashOut(string hashValue, string filePath, string hashType = "UNK")
         {
             if (hashType != null)
             {
-                if (filePathList.Contains(filePath))
+                if (hashes.ContainsKey(filePath))
                 {
                     if(verboseMode) ProgramReport.Notice("Existing file entry found, adding updated info.");
-                    foreach (FileHash hashObj in hashes)
-                    {
-                        if(hashObj.getFilePath() == filePath)
-                        {
-                            hashObj.addHashValue(hashValue, hashType);
-                        }
-                    }
+                    
+                    hashes[filePath].AddHashValue(hashValue, hashType);
                 }
                 else
                 {
-                    ProgramReport.Notice("New file entry found at "+filePath);
-                    filePathList.Add(filePath);
-                    hashes.Add(new FileHash(hashValue, hashType, filePath));
+                    if(verboseMode) ProgramReport.Notice("New file entry found at "+filePath);
+                    hashes.Add(filePath, new FileHash(hashValue, hashType, filePath));
                 }
-                Console.WriteLine("{0}: {1} @ {2}", hashType == "MD5" ? hashType + " " : hashType, hashValue, filePath);
+                if(!noHashOutput) Console.WriteLine("    {0}: {1} @ {2}", hashType == "MD5" ? hashType + " " : hashType, hashValue, filePath); //Would like to get rid of this in the future
             }
-            else //Generally this won't happen, but if it does we can handle it.
+        }
+        static void CSVWriter(Dictionary<string, FileHash> fileHashes, string csvFilePath)
+        {
+            try
             {
-                if (filePathList.Contains(filePath))
+                using (System.IO.StreamWriter csvCasefile = new System.IO.StreamWriter(csvFilePath))
                 {
-                    ProgramReport.Notice("Existing file entry found, adding updated info.");
-                    foreach (FileHash hashObj in hashes)
+                    csvCasefile.WriteLine("Date Collected, File Path, MD5 Hash Current, MD5 Hash Old, SHA1 Hash Current, SHA1 Hash Old, Unknown Hashes");
+                    foreach(KeyValuePair<string, FileHash> hashPair in fileHashes.ToList())
                     {
-                        if(hashObj.getFilePath() == filePath)
-                        {
-                            hashObj.addHashValue(hashValue, hashType);
-                        }
+                        FileHash hashObj = hashPair.Value;
+                        string dateCollected = "TODO";
+                        string filePath = hashPair.Key;
+                        string shaVal = hashObj.GetCurrentValue("SHA1");
+                        string md5Val = hashObj.GetCurrentValue("MD5");
+                        csvCasefile.WriteLine(
+                            "{0},{1},{2},{3},{4},{5}",
+                            dateCollected,
+                            filePath,
+                            md5Val,
+                            dateCollected,
+                            shaVal,
+                            dateCollected
+                        );
                     }
                 }
-                else
-                {
-                    ProgramReport.Notice("New file entry found at " + filePath);
-                    filePathList.Add(filePath);
-                    hashes.Add(new FileHash(hashValue, hashType, filePath));
-                }
-                Console.WriteLine("{1} @ {2}", hashValue, filePath);
             }
+            catch(Exception e)
+            {
+                ProgramReport.Error("Program.CSVWriter", "Could not open CSV Case File", e);
+            }
+            
+        }
+        static int IndexOfArrayUsingArray(string[] find, string[] dictionary)
+        {
+            foreach(string item in find) foreach(string word in dictionary) if (word == item) return Array.IndexOf(find, word);
+            return 0;
         }
     }
     class HashGen
@@ -254,8 +287,8 @@ namespace fhash2
         private List<string> hashHistorySHA1 = new List<string>();
         private List<string> hashHistoryMD5 = new List<string>();
         private List<string> hashHistoryUNK = new List<string>(); //unknown hash method
-        private string hashType { get; set; }
-        private string hashFilePath { get; set; }
+        private string HashType { get; set; }
+        private string HashFilePath { get; set; }
         public FileHash(string hashValue, string hashType = "", string hashFilePath = "")
         {
             if(hashType.ToLower() == "sha1")
@@ -270,17 +303,17 @@ namespace fhash2
             {
                 hashHistoryUNK.Add(hashValue);
             }
-            this.hashType = hashType;
-            this.hashFilePath = hashFilePath;
+            HashType = hashType;
+            HashFilePath = hashFilePath;
         }
-        public string getCurrentValue(string hashType = "") {
+        public string GetCurrentValue(string hashType = "") {
             if (hashType.ToLower() == "md5") return hashHistoryMD5.Last();
             else if (hashType.ToLower() == "sha1") return hashHistorySHA1.Last();
             else return hashHistoryUNK.Last();
         }
-        public string getType() { return hashType; }
-        public string getFilePath() { return hashFilePath; }
-        public void addHashValue(string updatedHash, string hashType = "")
+        public string GetHashType() { return HashType; }
+        public string GetFilePath() { return HashFilePath; }
+        public void AddHashValue(string updatedHash, string hashType = "")
         {
             if (hashType.ToLower() == "sha1") hashHistorySHA1.Add(updatedHash);
             else if (hashType.ToLower() == "md5") hashHistoryMD5.Add(updatedHash);
@@ -292,20 +325,17 @@ namespace fhash2
         public static bool quietMode = false;
         public static void Error(string location, string message, Exception exception = null)
         {
-            if (!quietMode)
+            Console.Write("[");
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.Write("X");
+            Console.ResetColor();
+            if (exception == null)
             {
-                Console.Write("[");
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.Write("X");
-                Console.ResetColor();
-                if (exception == null)
-                {
-                    Console.WriteLine("]: {0}, {1}", location, message);
-                }
-                else
-                {
-                    Console.WriteLine("]: {0} @ {1}, {2}", exception.Message, location, message);
-                }
+                Console.WriteLine("]: {0}, {1}", location, message);
+            }
+            else
+            {
+                Console.WriteLine("]: {0} @ {1}, {2}", exception.Message, location, message);
             }
         }
         public static void Warning(string location, string message)
