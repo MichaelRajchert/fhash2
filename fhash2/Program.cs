@@ -102,10 +102,12 @@ namespace fhash2
                 if (args.Intersect(arg_quiet).Any()) ProgramReport.quietMode = true; //DON'T OUTPUT ANY REPORTS
                 if (args.Intersect(arg_rawOut).Any()) ProgramReport.quietMode = true; //ONLY OUTPUT HASHES
                 if (args.Intersect(arg_verbose).Any()) verboseMode = true; //SHOW EXTRA LOGS
+
                 if (args.Intersect(arg_csv).Any())
                 {
                     noHashOutput = true;
                     int csvArgIndex = IndexOfArrayUsingArray(args, arg_csv);
+                    csvCaseFilePath = args[csvArgIndex+1];
                     ProgramReport.Notice("Given CSV case Location: " + args[csvArgIndex + 1]);
 
                     if (File.Exists(csvCaseFilePath))
@@ -120,6 +122,8 @@ namespace fhash2
                     }
                 }
 
+                //START GENERATING HASHES
+                if (!args.Intersect(arg_quiet).Any()) Console.WriteLine("");
                 if (args.Intersect(arg_genMD5).Any() && !args.Intersect(arg_quiet).Any()) { ProgramReport.Notice("Generating MD5"); }
                 if (args.Intersect(arg_genSHA1).Any() && !args.Intersect(arg_quiet).Any()) { ProgramReport.Notice("Generating SHA1"); }
 
@@ -150,6 +154,10 @@ namespace fhash2
                     programSuccess = false;
                 } //GENERATE HASHES
             }
+            
+            //FINISHED GENERATING, ADDING NEW HASHES TO FILE
+            if (!args.Intersect(arg_quiet).Any()) Console.WriteLine("");
+
             if (args.Intersect(arg_csv).Any()) 
             {
                 int csvArgIndex = IndexOfArrayUsingArray(args, arg_csv);
@@ -260,24 +268,42 @@ namespace fhash2
                 using (System.IO.StreamReader csvCaseFile = new StreamReader(filePath))
                 {
                     string line;
+                    int lineNum = 0;
                     while((line = csvCaseFile.ReadLine()) != null)
                     {
-                        List<string> lineData = line.Split(',').ToList<string>();
-                        string dateCollected = lineData[0];
-                        string hashFilePath = lineData[1];
-                        string md5Curr = lineData[2];
-                        string md5Old = lineData[3];
-                        string sha1Curr = lineData[4];
-                        string sha1Old = lineData[5];
-                        string unkHash = lineData[6];
-                        hashes.Add(hashFilePath, new FileHash(md5Curr, "MD5", hashFilePath));
-                        hashes.Add(hashFilePath, new FileHash(sha1Curr, "SHA1", hashFilePath));
+                        if(lineNum != 0) //skip first row
+                        {
+                            List<string> lineData = line.Split(',').ToList<string>();
+                            Console.WriteLine(line);
+                            string dateCollected = lineData[0];
+                            string hashFilePath = lineData[1];
+                            string md5Curr = lineData[2];
+                            string md5Old = lineData[3];
+                            string sha1Curr = lineData[4];
+                            string sha1Old = lineData[5];
+                            string unkHash = lineData[6];
+
+                            if (hashes.ContainsKey(hashFilePath))
+                            {
+                                hashes[hashFilePath].AddHashValue(md5Curr, "MD5");
+                                hashes[hashFilePath].AddHashValue(sha1Curr, "SHA1");
+                                if (unkHash != "") hashes[hashFilePath].AddHashValue(unkHash);
+                            }
+                            else
+                            {
+                                hashes.Add(hashFilePath, new FileHash(md5Curr, "MD5", hashFilePath));
+                                hashes[hashFilePath].AddHashValue(sha1Curr, "SHA1");
+                                if (unkHash != "") hashes[hashFilePath].AddHashValue(unkHash);
+                            }
+
+                        }
+                        lineNum++;
                     }
                 }
             }
             catch(Exception e)
             {
-                ProgramReport.Error("Program.CSVReader", "Failed to read CSV case file" + filePath, e);
+                ProgramReport.Error("Program.CSVReader", "CSV Case File Reader Error" + filePath, e);
             }
         }
 
@@ -300,21 +326,23 @@ namespace fhash2
                         string sha1OldVal = hashObj.GetOldValue("SHA1");
                         string md5CurrVal = hashObj.GetCurrentValue("MD5");
                         string md5OldVal = hashObj.GetOldValue("MD5");
+                        string unkVal = hashObj.GetOldValue("");
                         csvCasefile.WriteLine(
-                            "{0},{1},{2},{3},{4},{5}",
+                            "{0},{1},{2},{3},{4},{5},{6}",
                             dateCollected,
                             filePath,
                             md5CurrVal,
                             md5OldVal,
                             sha1CurrVal,
-                            sha1OldVal
+                            sha1OldVal,
+                            unkVal
                         );
                     }
                 }
             }
             catch(Exception e)
             {
-                ProgramReport.Error("Program.CSVWriter", "Could not open CSV Case File", e);
+                ProgramReport.Error("Program.CSVWriter", "CSV Case File Writer Error", e);
             }
             
         }
@@ -407,6 +435,7 @@ namespace fhash2
         public string GetFilePath() { return HashFilePath; }
         public void AddHashValue(string updatedHash, string hashType = "")
         {
+            ProgramReport.Notice(String.Format("Adding {0} hash to {0}", hashType, this.HashFilePath));
             if (hashType.ToLower() == "sha1") hashHistorySHA1.Add(updatedHash);
             else if (hashType.ToLower() == "md5") hashHistoryMD5.Add(updatedHash);
             else hashHistoryUNK.Add(updatedHash);
