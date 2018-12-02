@@ -274,7 +274,6 @@ namespace fhash2
                         if(lineNum != 0) //skip first row
                         {
                             List<string> lineData = line.Split(',').ToList<string>();
-                            Console.WriteLine(line);
                             string dateCollected = lineData[0];
                             string hashFilePath = lineData[1];
                             string md5Curr = lineData[2];
