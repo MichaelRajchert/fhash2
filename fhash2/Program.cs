@@ -1,3 +1,22 @@
+/* 
+    TODO LIST
+        Add Date&Time collected for file hash
+        Add CSV functionality
+        Look into sorting the final CSV file by filePath
+        Make the hashes list more efficient
+
+    PROCESS:
+        0 - If we supply a CSV case file and it EXISTS
+            Read all the contents and put it in our dictionary.
+            If it doesn't exist, we'll create one later.
+        1 - find out if the given filepath (arg[0]) is a file, or a directory
+            If it's a dir, call HashHandler() for the files in the folder, if not, just hash the file.
+        2 - Get the output of HashHandler() and send it to HashOut().
+            It'll store the hashes we generate in the dictionary, and if we want it to, write it to the console too.
+        3 - If we've supplied a location for a CSV file and it doesn't exist, write our data collected to it.
+        4 - Show a report at the end of all the stuff we discovered. Hopefully.
+*/
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,14 +27,6 @@ namespace fhash2
 {
     class Program
     {
-        /* TODO LIST
-             Add Date&Time collected for file hash
-             Add CSV functionality
-             Look into sorting the final CSV file by filePath
-             Make the hashes list more efficient
-        */
-        //static List<FileHash> hashes = new List<FileHash>();
-        //static List<string> filePathList = new List<string>(); //these are all the files we got
         static Dictionary<string, FileHash> hashes = new Dictionary<string, FileHash>();
 
         static bool programSuccess = true;
@@ -34,7 +45,6 @@ namespace fhash2
             string[] arg_csv = { "-csv", "/csv" };
             string[] arg_sortedOut = { "-sort", "/sort", "-s", "/s" }; //TODO
             string[] arg_help = { "-help", "/help", "-h", "/h" };
-
             
             if (args.Intersect(arg_help).Any())
             {
@@ -156,7 +166,7 @@ namespace fhash2
             } //PROGRAM COULD NOT FINISH
             //END
 
-            if (!args.Intersect(arg_quiet).Any())
+            if (!args.Intersect(arg_quiet).Any() && !args.Intersect(arg_help).Any())
             {
                 ProgramReport.Notice(String.Format("Done. \n\n"+
                                                    "     Scanned               : {0}\n" +
@@ -173,6 +183,10 @@ namespace fhash2
                 Console.ReadKey();
             }
         }
+
+
+        //HashHandler
+        //  This calls the hash generator class and tells it what to do.
         static void HashHandler(string filePath, string hashType = "MD5", bool raw = false, bool verbose = false)
         {
             if(hashType == "MD5")
@@ -215,13 +229,16 @@ namespace fhash2
             }
 
         }
+        
+        //HashOut
+        //  Basically handles what to do with a hash after we generate it.
+        //  If we have hashOutput enabled or verbose enable, it'll print extra stuff to the console.
         static void HashOut(string hashValue, string filePath, string hashType = "UNK")
         {
             if (hashType != null)
             {
                 if (hashes.ContainsKey(filePath))
                 {
-                    //if(verboseMode) ProgramReport.Notice("Existing file entry found, adding updated info.");
                     hashes[filePath].AddHashValue(hashValue, hashType);
                 }
                 else
@@ -229,9 +246,13 @@ namespace fhash2
                     if(verboseMode) ProgramReport.Notice("New file entry found at "+filePath);
                     hashes.Add(filePath, new FileHash(hashValue, hashType, filePath));
                 }
-                if(!noHashOutput) Console.WriteLine("    {0}: {1} @ {2}", hashType == "MD5" ? hashType + " " : hashType, hashValue, filePath); //Would like to get rid of this in the future
+                if(!noHashOutput) Console.WriteLine("    {0}: {1} @ {2}", hashType == "MD5" ? hashType + " " : hashType, hashValue, filePath);
             }
         }
+        
+        //CSVReader
+        //  Reads existing data from a given file path and add's it to the FileHash object.
+        //  Pretty much the same this as generating hashes but we don't actually generate anything
         static void CSVReader(string filePath)
         {
             try
@@ -259,6 +280,10 @@ namespace fhash2
                 ProgramReport.Error("Program.CSVReader", "Failed to read CSV case file" + filePath, e);
             }
         }
+
+        //CSVWriter
+        //  Writes our data to a case file, as a .csv
+        //  Contains various information relating to a digital forensic investigation.
         static void CSVWriter(Dictionary<string, FileHash> fileHashes, string csvFilePath)
         {
             try
@@ -293,6 +318,10 @@ namespace fhash2
             }
             
         }
+
+        //IndexOfArrayUsingArray
+        //  I needed this earlier, basically searches through an array, using an array of keywords.
+        //  If it finds something, it'll return the index integer.
         static int IndexOfArrayUsingArray(string[] find, string[] dictionary)
         {
             foreach(string item in find) foreach(string word in dictionary) if (word == item) return Array.IndexOf(find, word);
