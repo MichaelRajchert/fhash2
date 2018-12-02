@@ -1,3 +1,4 @@
+```
 fhash2 for CNT4513 UHA1188
 
 Generates MD5 and/or SHA1 hashes based on a given file/dir path,
@@ -35,3 +36,4 @@ ARGUMENTS:
     -csv /csv
     -sort /sort -s /s
     -help /help -h /h
+    ```
