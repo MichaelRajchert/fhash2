@@ -36,4 +36,3 @@ ARGUMENTS:
     -csv /csv
     -sort /sort -s /s
     -help /help -h /h
-    ```
