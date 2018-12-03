@@ -45,9 +45,9 @@ namespace fhash2
             string[] arg_verbose = { "-verbose", "/verbose", "-v", "/v" };
             string[] arg_csv = { "-csv", "/csv" };
             string[] arg_sortedOut = { "-sort", "/sort", "-s", "/s" }; //TODO
-            string[] arg_help = { "-help", "/help", "-h", "/h" }; 
-            
-            if (args.Intersect(arg_help).Any())
+            string[] arg_help = { "-help", "/help", "-h", "/h" };
+
+            if (args.Intersect(arg_help).Any() || args.Length == 0)
             {
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 Console.Write("fhash2 for CNT4513 UHA1188\n\n");
@@ -97,6 +97,7 @@ namespace fhash2
                 Console.Write("\n    ");
                 foreach (var arg in arg_help) Console.Write(arg.ToString() + " ");
                 Console.Write("\n");
+                return;
             } //WRITE HELP
             else
             {
