@@ -45,7 +45,7 @@ namespace fhash2
             string[] arg_verbose = { "-verbose", "/verbose", "-v", "/v" };
             string[] arg_csv = { "-csv", "/csv" };
             string[] arg_sortedOut = { "-sort", "/sort", "-s", "/s" }; //TODO
-            string[] arg_help = { "-help", "/help", "-h", "/h" };
+            string[] arg_help = { "-help", "/help", "-h", "/h" }; 
             
             if (args.Intersect(arg_help).Any())
             {
@@ -135,7 +135,7 @@ namespace fhash2
                 if (!args.Intersect(arg_quiet).Any()) Console.WriteLine("");
                 if (args.Intersect(arg_genMD5).Any() && !args.Intersect(arg_quiet).Any()) { ProgramReport.Notice("Generating MD5"); }
                 if (args.Intersect(arg_genSHA1).Any() && !args.Intersect(arg_quiet).Any()) { ProgramReport.Notice("Generating SHA1"); }
-
+                if (noHashSpecified) { ProgramReport.Notice("Generating MD5"); ProgramReport.Notice("Generating SHA1"); }
                 try
                 {
                     FileAttributes attr = File.GetAttributes(args[0]);
