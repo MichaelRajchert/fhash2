@@ -181,11 +181,7 @@ namespace fhash2
             if (args.Intersect(arg_csv).Any()) 
             {
                 int csvArgIndex = IndexOfArrayUsingArray(args, arg_csv);
-
-                if (!csvFileExists)
-                {
-                    CSVWriter(hashes, csvCaseFilePath);
-                }
+                CSVWriter(hashes, csvCaseFilePath);
             }//WRITE COLLECTED HASHES TO CASE FILE
 
             if (!programSuccess)
@@ -331,6 +327,11 @@ namespace fhash2
         //  Contains various information relating to a digital forensic investigation.
         static void CSVWriter(Dictionary<string, FileHash> fileHashes, string csvFilePath)
         {
+            foreach(KeyValuePair<string, FileHash> hashPair in hashes)
+            {
+                Console.WriteLine("FLAG");
+                Console.WriteLine(hashPair.Value.GetOldValue("SHA1"));
+            }
             try
             {
                 using (System.IO.StreamWriter csvCasefile = new StreamWriter(csvFilePath))
@@ -363,7 +364,6 @@ namespace fhash2
             {
                 ProgramReport.Error("Program.CSVWriter", "CSV Case File Writer Error", e);
             }
-            
         }
 
         //IndexOfArrayUsingArray
