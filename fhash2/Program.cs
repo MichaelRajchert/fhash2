@@ -109,8 +109,15 @@ namespace fhash2
                 {
                     noHashOutput = true;
                     int csvArgIndex = IndexOfArrayUsingArray(args, arg_csv);
-                    csvCaseFilePath = args[csvArgIndex+1];
-                    ProgramReport.Notice("Given CSV case Location: " + args[csvArgIndex + 1]);
+                    try
+                    {
+                        csvCaseFilePath = args[csvArgIndex + 1];
+                    }
+                    catch (Exception e)
+                    {
+                        ProgramReport.Error("Program.Main", "bad '-csv' arguments given", e);
+                    }
+                    ProgramReport.Notice("Given CSV case Location: " + csvCaseFilePath);
 
                     if (File.Exists(csvCaseFilePath))
                     {
@@ -176,7 +183,7 @@ namespace fhash2
 
                 if (!csvFileExists)
                 {
-                    CSVWriter(hashes, args[csvArgIndex + 1]);
+                    CSVWriter(hashes, csvCaseFilePath);
                 }
             }//WRITE COLLECTED HASHES TO CASE FILE
 
@@ -431,9 +438,10 @@ namespace fhash2
             HashFilePath = hashFilePath;
         }
         public string GetCurrentValue(string hashType = "") {
-            if (hashType.ToLower() == "md5") return hashHistoryMD5.Last();
-            else if (hashType.ToLower() == "sha1") return hashHistorySHA1.Last();
-            else return hashHistoryUNK.Last();
+            if (hashType.ToLower() == "md5" && hashHistoryMD5.Count() != 0) return hashHistoryMD5.Last();
+            else if (hashType.ToLower() == "sha1" && hashHistorySHA1.Count() != 0) return hashHistorySHA1.Last();
+            else if (hashType.ToLower() == "" && hashHistoryUNK.Count() != 0) return hashHistoryUNK.Last();
+            else return "";
         }
         public string GetOldValue(string hashType = "")
         {
