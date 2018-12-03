@@ -34,7 +34,7 @@ namespace fhash2
         static bool noHashOutput = false;
         static bool noHashSpecified;
         static string csvCaseFilePath;
-        static bool csvFileExists = false;
+        static int fileHashDiffCount = 0;
         static void Main(string[] args)
         {
             string[] arg_genMD5 = { "-md5", "/md5" };
@@ -123,7 +123,6 @@ namespace fhash2
                     if (File.Exists(csvCaseFilePath))
                     {
                         ProgramReport.Notice("Case file already exists. Data will be read and new hashes will be added.");
-                        csvFileExists = true;
                         CSVReader(csvCaseFilePath);
                     }
                     else
@@ -184,6 +183,12 @@ namespace fhash2
                 CSVWriter(hashes, csvCaseFilePath);
             }//WRITE COLLECTED HASHES TO CASE FILE
 
+            //COMPARE HASHES
+            foreach(KeyValuePair<string, FileHash> hashPair in hashes)
+            {
+                if (hashPair.Value.HashChanged("MD5")) Console.WriteLine(hashPair.Value.GetFilePath() + " CHANGED");
+            }
+
             if (!programSuccess)
             {
                 ProgramReport.Warning("", "Program exited with errors, review the critical errors and try again.");
@@ -200,7 +205,7 @@ namespace fhash2
                                                    args[0],
                                                    csvCaseFilePath,
                                                    hashes.Count(),
-                                                   "TODO"));
+                                                   fileHashDiffCount));
             } //END REPORT
             if (args.Intersect(arg_pause).Any()) //PAUSE WHEN DONE
             {
@@ -268,7 +273,7 @@ namespace fhash2
                 else
                 {
                     if(verboseMode) ProgramReport.Notice("New file entry found at "+filePath);
-                    hashes.Add(filePath, new FileHash(hashValue, hashType, filePath));
+                    hashes.Add(filePath, new FileHash(hashValue, hashType, filePath, DateTime.Now.ToString("ss:mm:h tt dd-MM-yyyy")));
                 }
                 if(!noHashOutput) Console.WriteLine("    {0}: {1} @ {2}", hashType == "MD5" ? hashType + " " : hashType, hashValue, filePath);
             }
@@ -306,7 +311,7 @@ namespace fhash2
                             }
                             else
                             {
-                                hashes.Add(hashFilePath, new FileHash(md5Curr, "MD5", hashFilePath));
+                                hashes.Add(hashFilePath, new FileHash(md5Curr, "MD5", hashFilePath, DateTime.Now.ToString("ss:mm:h tt dd-MM-yyyy")));
                                 hashes[hashFilePath].AddHashValue(sha1Curr, "SHA1");
                                 if (unkHash != "") hashes[hashFilePath].AddHashValue(unkHash);
                             }
@@ -327,11 +332,6 @@ namespace fhash2
         //  Contains various information relating to a digital forensic investigation.
         static void CSVWriter(Dictionary<string, FileHash> fileHashes, string csvFilePath)
         {
-            foreach(KeyValuePair<string, FileHash> hashPair in hashes)
-            {
-                Console.WriteLine("FLAG");
-                Console.WriteLine(hashPair.Value.GetOldValue("SHA1"));
-            }
             try
             {
                 using (System.IO.StreamWriter csvCasefile = new StreamWriter(csvFilePath))
@@ -340,7 +340,7 @@ namespace fhash2
                     foreach(KeyValuePair<string, FileHash> hashPair in fileHashes.ToList())
                     {
                         FileHash hashObj = hashPair.Value;
-                        string dateCollected = "TODO";
+                        string dateCollected = hashObj.GetDateTime();
                         string filePath = hashPair.Key;
                         string sha1CurrVal = hashObj.GetCurrentValue("SHA1");
                         string sha1OldVal = hashObj.GetOldValue("SHA1");
@@ -419,15 +419,16 @@ namespace fhash2
         private List<string> hashHistorySHA1 = new List<string>();
         private List<string> hashHistoryMD5 = new List<string>();
         private List<string> hashHistoryUNK = new List<string>(); //unknown hash method
+        private string dateTime = "";
         private string HashType { get; set; }
         private string HashFilePath { get; set; }
-        public FileHash(string hashValue, string hashType = "", string hashFilePath = "")
+        public FileHash(string hashValue, string hashType = "", string hashFilePath = "", string dateTime = "")
         {
-            if(hashType.ToLower() == "sha1")
+            if (hashType.ToLower() == "sha1")
             {
                 hashHistorySHA1.Add(hashValue);
             }
-            else if(hashType.ToLower() == "md5")
+            else if (hashType.ToLower() == "md5")
             {
                 hashHistoryMD5.Add(hashValue);
             }
@@ -446,13 +447,19 @@ namespace fhash2
         }
         public string GetOldValue(string hashType = "")
         {
-            if(hashType.ToLower() == "md5" && hashHistoryMD5.Count() > 1) { return hashHistoryMD5[hashHistoryMD5.Count() - 2]; }
-            else if(hashType.ToLower() == "sha1" && hashHistorySHA1.Count() > 1) { return hashHistorySHA1[hashHistorySHA1.Count() - 2]; }
-            else if(hashType.ToLower() == "" && hashHistoryUNK.Count() > 1) { return hashHistoryUNK[hashHistoryUNK.Count - 2]; }
+            if (hashType.ToLower() == "md5" && hashHistoryMD5.Count() > 1) { return hashHistoryMD5[hashHistoryMD5.Count() - 2]; }
+            else if (hashType.ToLower() == "sha1" && hashHistorySHA1.Count() > 1) { return hashHistorySHA1[hashHistorySHA1.Count() - 2]; }
+            else if (hashType.ToLower() == "" && hashHistoryUNK.Count() > 1) { return hashHistoryUNK[hashHistoryUNK.Count - 2]; }
             else { return ""; }
         }
         public string GetHashType() { return HashType; }
         public string GetFilePath() { return HashFilePath; }
+        public string GetDateTime() { return dateTime; }
+        public bool HashChanged(string hashType = "")
+        {
+            if(GetCurrentValue(hashType) != GetOldValue(hashType)) { return true; }
+            return false;
+        }
         public void AddHashValue(string updatedHash, string hashType = "")
         {
             if (hashType.ToLower() == "sha1") hashHistorySHA1.Add(updatedHash);
