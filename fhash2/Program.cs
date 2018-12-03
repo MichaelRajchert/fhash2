@@ -32,6 +32,7 @@ namespace fhash2
         static bool programSuccess = true;
         static bool verboseMode = false;
         static bool noHashOutput = false;
+        static bool noHashSpecified;
         static string csvCaseFilePath;
         static bool csvFileExists = false;
         static void Main(string[] args)
@@ -99,6 +100,7 @@ namespace fhash2
             } //WRITE HELP
             else
             {
+                if (!args.Intersect(arg_genMD5).Any() && !args.Intersect(arg_genSHA1).Any()) noHashSpecified = true;
                 if (args.Intersect(arg_quiet).Any()) ProgramReport.quietMode = true; //DON'T OUTPUT ANY REPORTS
                 if (args.Intersect(arg_rawOut).Any()) ProgramReport.quietMode = true; //ONLY OUTPUT HASHES
                 if (args.Intersect(arg_verbose).Any()) verboseMode = true; //SHOW EXTRA LOGS
@@ -138,6 +140,11 @@ namespace fhash2
                         {
                             if (args.Intersect(arg_genMD5).Any()) HashHandler(fileInfo.FullName, "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
                             if (args.Intersect(arg_genSHA1).Any()) HashHandler(fileInfo.FullName, "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                            if (noHashSpecified)
+                            {
+                                HashHandler(fileInfo.FullName, "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                                HashHandler(fileInfo.FullName, "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                            }
                         }
                     }
                     else
@@ -145,6 +152,11 @@ namespace fhash2
                         ProgramReport.Notice("Given File: " + args[0]);
                         if (args.Intersect(arg_genMD5).Any()) HashHandler(args[0], "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
                         if (args.Intersect(arg_genSHA1).Any()) HashHandler(args[0], "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                        if (noHashSpecified)
+                        {
+                            HashHandler(args[0], "MD5", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                            HashHandler(args[0], "SHA1", args.Intersect(arg_rawOut).Any() ? true : false, verboseMode);
+                        }
                     }
                     if (verboseMode) ProgramReport.Notice("Finished generating hashes.");
                 }
@@ -434,7 +446,6 @@ namespace fhash2
         public string GetFilePath() { return HashFilePath; }
         public void AddHashValue(string updatedHash, string hashType = "")
         {
-            ProgramReport.Notice(String.Format("Adding {0} hash to {0}", hashType, this.HashFilePath));
             if (hashType.ToLower() == "sha1") hashHistorySHA1.Add(updatedHash);
             else if (hashType.ToLower() == "md5") hashHistoryMD5.Add(updatedHash);
             else hashHistoryUNK.Add(updatedHash);
