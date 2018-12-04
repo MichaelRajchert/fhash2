@@ -1,4 +1,4 @@
-/* 
+﻿/* 
     TODO LIST
         Add Date&Time collected for file hash
         Add CSV functionality
@@ -28,6 +28,7 @@ namespace fhash2
     class Program
     {
         static Dictionary<string, FileHash> hashes = new Dictionary<string, FileHash>();
+        static List<String> changedFiles = new List<string>();
 
         static bool programSuccess = true;
         static bool verboseMode = false;
@@ -177,6 +178,11 @@ namespace fhash2
             //FINISHED GENERATING, ADDING NEW HASHES TO FILE
             if (!args.Intersect(arg_quiet).Any()) Console.WriteLine("");
 
+            if (args.Intersect(arg_sortedOut).Any())
+            {
+                //var sortedDict = from entry in hashes orderby entry.Key ascending select key;
+            }
+
             if (args.Intersect(arg_csv).Any()) 
             {
                 int csvArgIndex = IndexOfArrayUsingArray(args, arg_csv);
@@ -186,27 +192,25 @@ namespace fhash2
             //COMPARE HASHES
             foreach(KeyValuePair<string, FileHash> hashPair in hashes)
             {
-                if (hashPair.Value.HashChanged("MD5")) Console.WriteLine(hashPair.Value.GetFilePath() + " CHANGED");
+                if (hashPair.Value.HashChanged("MD5"))
+                {
+                    changedFiles.Add(String.Format("CHANGED | {0}", hashPair.Value.GetFilePath()));
+                    fileHashDiffCount++;
+                }
             }
+
+            if (!args.Intersect(arg_quiet).Any() && !args.Intersect(arg_help).Any() && !args.Intersect(arg_rawOut).Any())
+            {
+                Report(args[0]);
+            }
+                
 
             if (!programSuccess)
             {
                 ProgramReport.Warning("", "Program exited with errors, review the critical errors and try again.");
             } //PROGRAM COULD NOT FINISH
-            //END
 
-            if (!args.Intersect(arg_quiet).Any() && !args.Intersect(arg_help).Any())
-            {
-                ProgramReport.Notice(String.Format("Done. \n\n"+
-                                                   "     Scanned               : {0}\n" +
-                                                   "     CaseFile              : {1}\n" +
-                                                   "     Hashes Recorded       : {2}\n" +
-                                                   "     Hash Changes Detected : {3}\n",
-                                                   args[0],
-                                                   csvCaseFilePath,
-                                                   hashes.Count(),
-                                                   fileHashDiffCount));
-            } //END REPORT
+            //END
             if (args.Intersect(arg_pause).Any()) //PAUSE WHEN DONE
             {
                 Console.ReadKey();
@@ -273,7 +277,7 @@ namespace fhash2
                 else
                 {
                     if(verboseMode) ProgramReport.Notice("New file entry found at "+filePath);
-                    hashes.Add(filePath, new FileHash(hashValue, hashType, filePath, DateTime.Now.ToString("ss:mm:h tt dd-MM-yyyy")));
+                    hashes.Add(filePath, new FileHash(hashValue, hashType, filePath, getTime()));
                 }
                 if(!noHashOutput) Console.WriteLine("    {0}: {1} @ {2}", hashType == "MD5" ? hashType + " " : hashType, hashValue, filePath);
             }
@@ -366,6 +370,24 @@ namespace fhash2
             }
         }
 
+        static void Report(string scannedFilePath)
+        {
+            ProgramReport.Notice("Done.");
+            Console.WriteLine("\n======================================================================\n" +
+                                "    Scanned          : {0}\n" +
+                                "    Case File        : {1}\n" +
+                                "    Hashes Recorded  : {2}\n" +
+                                "    Changes Detected : {3}",
+                                scannedFilePath, csvCaseFilePath, hashes.Count(), fileHashDiffCount);
+            if (fileHashDiffCount != 0)
+            {
+                foreach (string change in changedFiles)
+                {
+                    Console.WriteLine("      |--" + change);
+                }
+            }
+            Console.WriteLine("======================================================================");
+        }
         //IndexOfArrayUsingArray
         //  I needed this earlier, basically searches through an array, using an array of keywords.
         //  If it finds something, it'll return the index integer.
@@ -373,6 +395,10 @@ namespace fhash2
         {
             foreach(string item in find) foreach(string word in dictionary) if (word == item) return Array.IndexOf(find, word);
             return 0;
+        }
+        static string getTime()
+        {
+            return DateTime.Now.ToString();
         }
     }
     class HashGen
@@ -436,6 +462,7 @@ namespace fhash2
             {
                 hashHistoryUNK.Add(hashValue);
             }
+            this.dateTime = dateTime;
             HashType = hashType;
             HashFilePath = hashFilePath;
         }
